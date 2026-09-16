@@ -1,0 +1,14 @@
+# 하위 독립 저장소 (폴리레포) — 부모가 gitlink로 커밋하지 않도록 반드시 제외
+minipj1-backend/
+minipj1-frontend/
+
+# 개인 로컬 설정 (팀 공유 대상 아님)
+.claude/settings.local.json
+
+# IDE / 도구 산출물
+.metadata/
+shrimp_data/
+
+node_modules/
+.DS_Store
+*.log
