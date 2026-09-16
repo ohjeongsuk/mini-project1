@@ -588,18 +588,24 @@ projectedExpense = confirmedExpense + baselineDailyAvg × (daysInMonth - daysEla
 
 **3) 이상치(anomalies)** — 카테고리별로 이번 달 **속도**를 기준선과 비교한다.
 ```
+baseline    = (직전 3개월 해당 카테고리 지출) / (그 3개월의 실제 총 일수) × daysInMonth
 currentPace = (이번 달 해당 카테고리 지출) / daysElapsed × daysInMonth
 deltaRatio  = (currentPace - baseline) / baseline
 ```
+- **카테고리별 baseline 도 일수로 나눈 뒤 당월 일수로 환산한다.** 수식 1)과 같은 방식이다.
+  개월 수로 나누면 28일인 2월과 31일인 1월이 같은 가중치를 받고, `currentPace`(월 환산)와 단위도 어긋난다.
 - `|deltaRatio| >= 0.30`이고 `baseline > 0`일 때만 목록에 담는다. 임계값을 낮추면 매달 모든 카테고리가 "이상"이 되어 알림이 무의미해진다.
 - **월초에는 노이즈가 크다.** `daysElapsed < 7`이면 이상치를 계산하지 않고 빈 배열을 반환한다. 1일에 외식 한 번 하면 식비가 3000% 증가로 나온다.
 
 **4) 고정지출 감지(recurring)** — 최근 3개월 스캔.
 ```
+스캔 범위 = asOf 기준 직전 3개월 (당월 제외)
 정규화상호 = LOWER(TRIM(merchant))에서 공백·괄호·숫자 제거
-조건 = 정규화상호가 최근 3개월 각각에 1건 이상 존재
+조건 = 정규화상호가 그 3개월 각각에 1건 이상 존재
      AND 각 건의 금액이 (해당 상호 금액 중앙값 ± 10%) 이내
 ```
+- **당월을 제외한다.** 당월은 아직 진행 중이라, 결제일 전후로 같은 항목이 목록에서 사라졌다 다시 나타난다.
+  기준선·예측이 쓰는 "직전 3개월"과 범위를 맞춰 일관되게 둔다.
 - `merchant`가 비어 있는 거래는 대상에서 제외한다.
 - 결과에는 `merchant`, `categoryId`, `medianAmount`, `monthsSeen`, `lastDate`를 담는다.
 - **감지 결과를 자동으로 저장하지 않는다.** 화면에 "이거 고정지출로 보여요"만 표시한다. DB에 쓰기 시작하면 사용자가 지운 항목이 다음 달에 되살아나는 문제를 처리해야 하고, 그 순간 반복 거래 기능을 만드는 것과 같아진다.
