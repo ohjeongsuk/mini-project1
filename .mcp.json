@@ -19,10 +19,11 @@
       "args": ["shadcn@latest", "mcp"]
     },
     "shrimp-task-manager": {
-      "command": "node",
-      "args": ["D:\\claude\\mcp-shrimp-task-manager\\dist\\index.js"],
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-shrimp-task-manager"],
       "env": {
-        "DATA_DIR": "D:\\claude\\mini-project\\shrimp_data",
+        "DATA_DIR": "./shrimp_data",
         "TEMPLATES_USE": "ko",
         "ENABLE_GUI": "true"
       }

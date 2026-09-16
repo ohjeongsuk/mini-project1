@@ -172,7 +172,7 @@ Claude Code는 현재 디렉토리에서 **상위 디렉토리로 거슬러 올�
 - **Spring Boot 4는 Jackson 3를 쓴다. 직렬화 관련 설정을 넣지 않는다.** Jackson 3의 기본값이 이미 ISO-8601 문자열이므로 §5의 날짜 포맷 요구는 **무설정으로 충족된다.**
   > ⚠️ **컴파일 오류로 걸러지지 않고 조용히 무시된다.** `springdoc`과 `jjwt-jackson`이 **Jackson 2(`com.fasterxml.jackson`)를 compile scope로 함께 끌고 들어오므로** 옛 상수(`SerializationFeature.WRITE_DATES_AS_TIMESTAMPS`)를 참조해도 컴파일은 통과한다. 그러나 Boot 4의 실제 직렬화 엔진은 Jackson 3(`tools.jackson`)라 그 설정이 **아무 효과도 내지 못한다.** 애초에 손대지 않는 것이 유일한 방어다.
 - **애니메이션 패키지는 `motion`이다.** `framer-motion`은 이름이 바뀌기 전의 deprecated 별칭이다. `npm install motion`으로 설치하고 **import는 반드시 `motion/react`에서 한다.**
-- **shadcn/ui는 React 19 + Tailwind 4를 정식 지원한다.** 단 npm으로 설치할 때 peer dependency 충돌이 나므로 **`--legacy-peer-deps` 플래그를 쓴다.** toast 컴포넌트는 deprecated이므로 **sonner**를 쓰고, 신규 프로젝트 스타일은 **new-york**을 쓴다.
+- **shadcn/ui는 React 19 + Tailwind 4를 정식 지원한다.** 단 npm으로 설치할 때 peer dependency 충돌이 나므로 **`--legacy-peer-deps` 플래그를 쓴다.** toast 컴포넌트는 deprecated이므로 **sonner**를 쓰고, 스타일은 **radix-nova**를 쓴다(shadcn 4.x 의 신규 스타일. `components.json` 에 이미 설정되어 있다).
 - **폼 라이브러리를 도입하지 않는다.** `react-hook-form`·`zod`·`@hookform/resolvers`를 설치하지 않는다. 이 앱의 폼은 검증 규칙이 §4 제약 표로 고정되어 있어 `useState` + 수동 검증으로 충분하다.
   > ⚠️ **shadcn/ui의 `form` 컴포넌트를 추가하지 않는다.** 이 컴포넌트만 `react-hook-form` 위에 만들어져 있어, `npx shadcn add form`을 실행하면 `react-hook-form`과 `@hookform/resolvers`가 **의존성으로 함께 설치된다.** 다른 shadcn 컴포넌트(`input`, `label`, `button`, `select`, `checkbox`, `calendar`, `tabs`, `dialog` 등)는 영향이 없다.
   > ⚠️ **대신 `dirty` 판정을 직접 구현해야 한다.** `TXN-09`(이탈 확인)가 이를 요구하므로 초기값과 현재값을 직접 비교한다. **금액 필드가 특히 까다롭다** — 표시용으로 천단위 콤마를 넣으므로(§8) 비교는 반드시 **콤마를 제거한 정규화 값끼리** 한다.
@@ -229,15 +229,22 @@ DB 스키마명: **`miniproject1_db`** (소문자) · 테스트: **`miniproject1
 |---|---|---|
 | id | BIGSERIAL | PK |
 | email | VARCHAR(255) | UNIQUE, NOT NULL (로그인 ID) |
-| password | VARCHAR(255) | NOT NULL |
+| password | VARCHAR(255) | NULL (구글 계정은 비밀번호가 없다) |
 | nickname | VARCHAR(50) | NOT NULL |
+| provider | VARCHAR(20) | NOT NULL, DEFAULT `LOCAL` (`LOCAL`/`GOOGLE`) |
+| provider_id | VARCHAR(255) | NULL (구글 `sub`) |
 | created_at | TIMESTAMP | NOT NULL |
 | updated_at | TIMESTAMP | NOT NULL |
 | deleted_at | TIMESTAMP | NULL |
 
 > **`users.deleted_at`은 이번 범위에서 항상 NULL이다.** 회원 탈퇴가 비목표이므로 값을 채우는 경로가 없다. 다만 스키마와 조회 조건은 유지해, 향후 탈퇴 기능 추가 시 구조를 바꾸지 않는다. 로그인·인증 시 `deleted_at IS NULL` 검사는 걸어둔다.
 >
-> **`provider`·`provider_id` 컬럼을 지금 만들지 않는다.** 구글 로그인이 범위 밖이므로 항상 `LOCAL`/`NULL`인 컬럼이 된다. 나중에 OAuth를 추가할 때 컬럼 2개를 더하는 마이그레이션은 사소하다.
+> **`provider`·`provider_id` 컬럼을 둔다.** 구글 로그인(`AUTH-09`)을 범위에 넣으면서 추가했다.
+> `provider`는 `LOCAL`/`GOOGLE`이고 기본값은 `LOCAL`이다. `provider_id`는 구글의 `sub` 값으로 로컬 계정에서는 `NULL`이다.
+>
+> **`password`는 `NULL`을 허용한다.** 구글 계정에는 비밀번호가 없다. 랜덤 해시를 채워 넣으면 "비밀번호가 있는 계정"처럼 보여 로그인 경로가 헷갈린다. 비밀번호 로그인은 `provider = LOCAL`이고 `password IS NOT NULL`인 계정에만 허용한다.
+>
+> `ddl-auto: update`는 기존 행이 있는 테이블에 `NOT NULL` 컬럼을 붙이지 못하므로, 부분 유니크 인덱스와 같이 **`db/schema-extra.sql`에 DDL을 직접 적는다.**
 
 ### categories
 | 컬럼 | 타입 | 제약 |
@@ -597,15 +604,22 @@ deltaRatio  = (currentPace - baseline) / baseline
 - `|deltaRatio| >= 0.30`이고 `baseline > 0`일 때만 목록에 담는다. 임계값을 낮추면 매달 모든 카테고리가 "이상"이 되어 알림이 무의미해진다.
 - **월초에는 노이즈가 크다.** `daysElapsed < 7`이면 이상치를 계산하지 않고 빈 배열을 반환한다. 1일에 외식 한 번 하면 식비가 3000% 증가로 나온다.
 
-**4) 고정지출 감지(recurring)** — 최근 3개월 스캔.
+**4) 고정지출 감지(recurring)** — 직전 3개월 + 당월 스캔.
 ```
-스캔 범위 = asOf 기준 직전 3개월 (당월 제외)
+스캔 범위 = asOf 기준 직전 3개월 + 당월(asOf 까지)
+필수 개월 = 직전 3개월                     ← 당월은 필수가 아니다
 정규화상호 = LOWER(TRIM(merchant))에서 공백·괄호·숫자 제거
-조건 = 정규화상호가 그 3개월 각각에 1건 이상 존재
-     AND 각 건의 금액이 (해당 상호 금액 중앙값 ± 10%) 이내
+조건 = 정규화상호가 필수 개월 각각에 1건 이상 존재
+     AND 스캔 범위 안 각 건의 금액이 (해당 상호 금액 중앙값 ± 10%) 이내
 ```
-- **당월을 제외한다.** 당월은 아직 진행 중이라, 결제일 전후로 같은 항목이 목록에서 사라졌다 다시 나타난다.
-  기준선·예측이 쓰는 "직전 3개월"과 범위를 맞춰 일관되게 둔다.
+- **당월도 스캔하되 필수 조건에서는 뺀다.** 이 둘을 구분하는 것이 핵심이다.
+  당월까지 필수로 만들면 매달 1일부터 결제일 사이에는 아직 결제가 없어
+  **목록이 통째로 비었다가 결제가 들어오면 다시 나타난다.** 사용자에게는 고장으로 보인다.
+  필수를 직전 3개월로 두면 목록이 달 내내 안정적이고, 당월 결제는 들어오는 대로
+  `monthsSeen`(3 또는 4)과 `lastDate` 에 반영된다.
+- **당월 거래도 중앙값·±10% 판정에 들어간다.** 이번 달 금액이 크게 달라지면 그 항목은
+  더 이상 "금액이 고정된 지출" 이 아니므로 목록에서 빠지는 것이 맞다.
+- 당월의 상한은 달 끝이 아니라 **`asOf`** 다. 아직 오지 않은 날짜로 입력된 거래를 세지 않는다.
 - `merchant`가 비어 있는 거래는 대상에서 제외한다.
 - 결과에는 `merchant`, `categoryId`, `medianAmount`, `monthsSeen`, `lastDate`를 담는다.
 - **감지 결과를 자동으로 저장하지 않는다.** 화면에 "이거 고정지출로 보여요"만 표시한다. DB에 쓰기 시작하면 사용자가 지운 항목이 다음 달에 되살아나는 문제를 처리해야 하고, 그 순간 반복 거래 기능을 만드는 것과 같아진다.
@@ -804,6 +818,27 @@ http
 
 - 사용자는 이후 자유롭게 수정·삭제·추가할 수 있다. **특별 취급하는 플래그를 두지 않는다** — `is_default` 컬럼을 만들면 "기본 카테고리는 삭제 못 함" 같은 규칙이 따라붙고, 그건 아무도 요청하지 않은 제약이다.
 
+### 구글 로그인 (AUTH-09)
+
+**백엔드 주도 리다이렉트**다. Spring Security OAuth2 Client 를 쓰고 NextAuth/Auth.js 는 쓰지 않는다.
+
+```
+프론트 "Google로 계속하기"
+  → GET  {API}/oauth2/authorization/google        (백엔드가 구글로 리다이렉트)
+  → 구글 동의 화면
+  → GET  {API}/login/oauth2/code/google           (구글이 백엔드로 되돌림)
+  → 백엔드가 우리 JWT 를 발급하고 프론트로 리다이렉트
+  → {WEB}/oauth/callback#token=...                (성공)
+  → {WEB}/oauth/callback#error=email_conflict     (실패)
+```
+
+- **토큰은 쿼리스트링이 아니라 URL 프래그먼트(`#`)로 넘긴다.** 프래그먼트는 서버로 전송되지 않아 액세스 로그·`Referer` 헤더에 JWT 가 남지 않는다. **프론트는 값을 읽는 즉시 `history.replaceState` 로 해시를 지운다.** 안 지우면 뒤로가기로 토큰이 다시 드러난다.
+- **같은 이메일의 로컬 계정이 이미 있으면 구글 로그인을 거부한다.** 자동 연동하지 않는다 — 구글 이메일 소유만으로 기존 비밀번호 계정을 차지하는 경로가 되기 때문이다. `error=email_conflict` 로 안내한다.
+- **구글로 처음 로그인하면 그 자리에서 회원가입 처리한다.** 일반 가입과 똑같이 **기본 카테고리 9개**를 같은 트랜잭션에서 만든다(AUTH-05).
+- **구글 계정은 비밀번호 로그인을 할 수 없다.** `POST /auth/login` 은 `provider = LOCAL` 이고 `password IS NOT NULL` 인 계정에만 응답한다. 그 외에는 일반 로그인 실패와 같은 401 문구를 쓴다(계정 존재 여부 노출 방지).
+- 리다이렉트 대상은 환경변수 `OAUTH2_REDIRECT_URI` 로 분리한다. 코드에 하드코딩하지 않는다.
+- **Google Cloud Console 의 승인된 리디렉션 URI 는 백엔드 주소다** — 로컬은 `http://localhost:8080/login/oauth2/code/google`. 프론트 주소를 넣으면 `redirect_uri_mismatch` 가 난다.
+
 ### 보안 규칙
 - 비밀번호: **BCrypt** 해싱, 6자 이상 + **UTF-8 72바이트 이하** (§4 ⚠️ 참조)
 - 이메일: 형식 검증 + 중복 검사
@@ -865,13 +900,43 @@ http
 
 ### 스타일 원칙
 - 그림자 대신 **1px border**(`#E5E5E5`)로 면 구분. 그림자는 모달/드롭다운에만.
+  > **예외는 대시보드 잔액 카드 하나다.** 이 화면에서 가장 중요한 숫자를 배경에서 띄우기 위해 그림자를 쓴다.
+  > 값은 `globals.css`의 **`--hero-shadow` 토큰 한 곳**에만 두고, 화면에서는 `shadow-hero` 유틸리티만 쓴다.
+  > ⚠️ **컴포넌트에 임의의 그림자(`shadow-lg`, `shadow-[...]`)를 직접 적지 않는다.** 예외가 흩어지는 순간
+  > 면 구분이 border 와 그림자 두 체계로 갈라지고, "왜 이 카드만 떠 있지"에 답할 곳이 없어진다.
+  > ⚠️ **다크 모드에서는 이 토큰이 `none` 이다.** 배경(`#0A0A0A`)이 거의 검정이라 검은 그림자는
+  > 보이지도 않으면서 카드 주변만 탁하게 만든다. 다크에서는 1px border 가 계속 면 구분을 맡는다.
 - 라운드: 카드 `rounded-xl`, 버튼/인풋 `rounded-lg`
 - 폰트: **Pretendard**. ⚠️ **Google Fonts에 없으므로 `next/font/google`로 불러올 수 없다.** 폰트 파일(`.woff2`)을 `src/app/fonts/`에 넣고 **`next/font/local`**로 로드한다. 가변 폰트(`PretendardVariable.woff2`) 하나면 충분하다.
 - 본문 15px / 항목 제목 16px semibold / 캡션 13px
 - **금액은 `tabular-nums`를 적용한다.** 비례 숫자로 두면 목록에서 자릿수가 세로로 어긋나 읽기 어렵다. Tailwind의 `tabular-nums` 유틸리티 한 줄이다
 - 컨테이너 `max-w-5xl`(대시보드는 차트가 있어 표본보다 넓다), 패딩 모바일 16px · 데스크톱 24px
-- **다크 모드**: 토큰을 라이트/다크 양쪽으로 정의하고 **`@media (prefers-color-scheme: dark)`로 전환**한다. 토글 UI는 MVP 범위 밖이다.
-  > ⚠️ **`class` 전략을 쓰지 않는다.** 토글이 없는데 `class` 전략을 쓰면 서버 렌더 시점에 클래스가 없어 라이트로 그려졌다가 클라이언트에서 다크로 바뀌는 깜빡임(FOUC)이 생긴다. 미디어쿼리는 CSS만으로 처리되어 hydration 문제가 아예 없다.
+- **다크 모드**: 토큰을 라이트/다크 양쪽으로 정의하고, **시스템 설정을 기본으로 따르되 사용자가 직접 바꿀 수 있게** 한다.
+  모드는 셋이다 — **시스템 / 라이트 / 다크**. 헤더의 버튼 하나가 셋을 순환하고 선택은 `localStorage`(`moneylog_theme`)에 남는다.
+
+  ```css
+  /* 1) 시스템 모드 = data-theme 속성이 없는 상태. CSS 만으로 처리된다 */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { /* 다크 값 */ }
+  }
+  /* 2) 사용자가 명시적으로 고른 다크 */
+  :root[data-theme="dark"] { /* 같은 다크 값 */ }
+  ```
+
+  > ⚠️ **`class` 전략(`.dark`)을 쓰지 않는다.** `data-theme` 속성을 쓴다.
+  > `class` 는 다른 유틸리티와 섞여 무엇이 테마용인지 구분되지 않지만, 속성은 용도가 하나로 고정된다.
+  >
+  > ⚠️ **기본값을 "속성 없음"으로 둔 것이 FOUC 방어의 핵심이다.** 저장된 선택이 없으면 서버 HTML 에
+  > `data-theme` 이 아예 없고, 그 상태에서 미디어쿼리가 CSS 만으로 시스템 설정을 따른다.
+  > 즉 **대다수 사용자에게는 JS 가 개입할 일이 없어 깜빡임 경로 자체가 없다.**
+  >
+  > ⚠️ **선택을 저장한 사용자만 JS 가 필요하다.** 그 값은 `localStorage` 에 있어 서버가 알 수 없으므로,
+  > `<head>` 의 **동기 인라인 스크립트**로 첫 페인트 전에 `data-theme` 을 붙인다.
+  > `useEffect` 로 붙이면 hydration 이후라 한 프레임 깜빡인다.
+  >
+  > ⚠️ **`dangerouslySetInnerHTML` 을 쓰지 않는다**(§6). React 19 는 `<script>{"..."}</script>` 의
+  > 문자열 자식을 스크립트 본문으로 렌더하므로 그대로 쓰면 된다.
+  >
   > ⚠️ **`@theme`을 `@media` 안에 중첩하지 않는다.** Tailwind v4에서 `@theme`은 **최상위에만 올 수 있다.** 라이트 값을 `@theme`에 한 번 선언해 유틸리티를 만들고, **다크에서는 생성된 커스텀 프로퍼티를 `:root`에서 덮어쓴다.**
   > ```css
   > @theme { --color-bg: #FAFAFA; }                        /* 유틸리티 생성 */
@@ -1153,6 +1218,7 @@ npm run build
 | 카테고리 없음 / 소유자 불일치 | 404 | `CATEGORY_NOT_FOUND` |
 | **API 경로 없음** | 404 | **`NOT_FOUND`** |
 | **지원하지 않는 HTTP 메서드** | 405 | **`METHOD_NOT_ALLOWED`** |
+| **지원하지 않는 Content-Type** | 415 | **`UNSUPPORTED_MEDIA_TYPE`** |
 | 이메일 중복 (회원가입) | 409 | `EMAIL_DUPLICATED` |
 | 카테고리 이름 중복 | 409 | `CATEGORY_DUPLICATED` |
 | 서버 오류 | 500 | `INTERNAL_ERROR` |
@@ -1165,6 +1231,11 @@ npm run build
 > |---|---|
 > | 없는 경로 | `org.springframework.web.servlet.resource.NoResourceFoundException` |
 > | 잘못된 메서드 | `org.springframework.web.HttpRequestMethodNotSupportedException` |
+> | 잘못된 Content-Type | `org.springframework.web.HttpMediaTypeNotSupportedException` |
+>
+> ⚠️ **셋째는 `multipart/form-data` 를 받는 `POST /api/v1/data/import` 에서 드러난다.**
+> 프론트는 `FormData` 를 쓰므로 화면에서는 재현되지 않지만, 잘못된 Content-Type 으로
+> 호출하면 500 이 나간다. **클라이언트 잘못을 서버 오류로 보고하면 오류 모니터링이 오염된다.**
 >
 > ⚠️ **미인증 요청에서는 재현되지 않는다.** Security 필터가 먼저 401로 막아 컨트롤러까지 가지 않으므로, **인증 토큰을 넣고 확인해야 한다.**
 
