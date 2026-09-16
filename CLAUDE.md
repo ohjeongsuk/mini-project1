@@ -1187,6 +1187,7 @@ npm run build
 | 카테고리 없음 / 소유자 불일치 | 404 | `CATEGORY_NOT_FOUND` |
 | **API 경로 없음** | 404 | **`NOT_FOUND`** |
 | **지원하지 않는 HTTP 메서드** | 405 | **`METHOD_NOT_ALLOWED`** |
+| **지원하지 않는 Content-Type** | 415 | **`UNSUPPORTED_MEDIA_TYPE`** |
 | 이메일 중복 (회원가입) | 409 | `EMAIL_DUPLICATED` |
 | 카테고리 이름 중복 | 409 | `CATEGORY_DUPLICATED` |
 | 서버 오류 | 500 | `INTERNAL_ERROR` |
@@ -1199,6 +1200,11 @@ npm run build
 > |---|---|
 > | 없는 경로 | `org.springframework.web.servlet.resource.NoResourceFoundException` |
 > | 잘못된 메서드 | `org.springframework.web.HttpRequestMethodNotSupportedException` |
+> | 잘못된 Content-Type | `org.springframework.web.HttpMediaTypeNotSupportedException` |
+>
+> ⚠️ **셋째는 `multipart/form-data` 를 받는 `POST /api/v1/data/import` 에서 드러난다.**
+> 프론트는 `FormData` 를 쓰므로 화면에서는 재현되지 않지만, 잘못된 Content-Type 으로
+> 호출하면 500 이 나간다. **클라이언트 잘못을 서버 오류로 보고하면 오류 모니터링이 오염된다.**
 >
 > ⚠️ **미인증 요청에서는 재현되지 않는다.** Security 필터가 먼저 401로 막아 컨트롤러까지 가지 않으므로, **인증 토큰을 넣고 확인해야 한다.**
 
