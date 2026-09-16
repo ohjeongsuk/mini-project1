@@ -152,6 +152,7 @@ Claude Code는 현재 디렉토리에서 **상위 디렉토리로 거슬러 올�
 | 차트 | **라이브러리를 쓰지 않는다** — 자체 SVG/CSS (아래 ⚠️ 참조) |
 | 토스트 | **shadcn/ui `sonner`** |
 | 날짜 | **date-fns** (shadcn Calendar 의존) |
+| 클래스명 병합 | **`cn`** (shadcn 제공, `clsx` + `tailwind-merge` 대체. 의존성 0개) |
 
 ### ⚠️ 버전 관련 확정 사항
 
