@@ -172,7 +172,7 @@ Claude Code는 현재 디렉토리에서 **상위 디렉토리로 거슬러 올�
 - **Spring Boot 4는 Jackson 3를 쓴다. 직렬화 관련 설정을 넣지 않는다.** Jackson 3의 기본값이 이미 ISO-8601 문자열이므로 §5의 날짜 포맷 요구는 **무설정으로 충족된다.**
   > ⚠️ **컴파일 오류로 걸러지지 않고 조용히 무시된다.** `springdoc`과 `jjwt-jackson`이 **Jackson 2(`com.fasterxml.jackson`)를 compile scope로 함께 끌고 들어오므로** 옛 상수(`SerializationFeature.WRITE_DATES_AS_TIMESTAMPS`)를 참조해도 컴파일은 통과한다. 그러나 Boot 4의 실제 직렬화 엔진은 Jackson 3(`tools.jackson`)라 그 설정이 **아무 효과도 내지 못한다.** 애초에 손대지 않는 것이 유일한 방어다.
 - **애니메이션 패키지는 `motion`이다.** `framer-motion`은 이름이 바뀌기 전의 deprecated 별칭이다. `npm install motion`으로 설치하고 **import는 반드시 `motion/react`에서 한다.**
-- **shadcn/ui는 React 19 + Tailwind 4를 정식 지원한다.** 단 npm으로 설치할 때 peer dependency 충돌이 나므로 **`--legacy-peer-deps` 플래그를 쓴다.** toast 컴포넌트는 deprecated이므로 **sonner**를 쓰고, 신규 프로젝트 스타일은 **new-york**을 쓴다.
+- **shadcn/ui는 React 19 + Tailwind 4를 정식 지원한다.** 단 npm으로 설치할 때 peer dependency 충돌이 나므로 **`--legacy-peer-deps` 플래그를 쓴다.** toast 컴포넌트는 deprecated이므로 **sonner**를 쓰고, 스타일은 **radix-nova**를 쓴다(shadcn 4.x 의 신규 스타일. `components.json` 에 이미 설정되어 있다).
 - **폼 라이브러리를 도입하지 않는다.** `react-hook-form`·`zod`·`@hookform/resolvers`를 설치하지 않는다. 이 앱의 폼은 검증 규칙이 §4 제약 표로 고정되어 있어 `useState` + 수동 검증으로 충분하다.
   > ⚠️ **shadcn/ui의 `form` 컴포넌트를 추가하지 않는다.** 이 컴포넌트만 `react-hook-form` 위에 만들어져 있어, `npx shadcn add form`을 실행하면 `react-hook-form`과 `@hookform/resolvers`가 **의존성으로 함께 설치된다.** 다른 shadcn 컴포넌트(`input`, `label`, `button`, `select`, `checkbox`, `calendar`, `tabs`, `dialog` 등)는 영향이 없다.
   > ⚠️ **대신 `dirty` 판정을 직접 구현해야 한다.** `TXN-09`(이탈 확인)가 이를 요구하므로 초기값과 현재값을 직접 비교한다. **금액 필드가 특히 까다롭다** — 표시용으로 천단위 콤마를 넣으므로(§8) 비교는 반드시 **콤마를 제거한 정규화 값끼리** 한다.

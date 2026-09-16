@@ -359,7 +359,7 @@
 
 **작업**
 - **Next.js 15** + **TypeScript 5.x** + Tailwind CSS 4, `src/` 구조, **Node 22 이상**(권장 24 LTS)
-- shadcn/ui 초기화 — **`--legacy-peer-deps`**, 스타일 **new-york**
+- shadcn/ui 초기화 — **`--legacy-peer-deps`**, 스타일 **radix-nova**
   - 설치할 컴포넌트: `button`, `input`, `label`, `select`, `calendar`, `popover`, `tabs`, `dialog`, `sonner`, `skeleton`, `badge`
   - ⚠️ **`npx shadcn add form`을 실행하지 않는다** (`react-hook-form` 유입 경로)
 - 패키지: `motion`(구 framer-motion 아님), `date-fns`, `@tanstack/react-query`
