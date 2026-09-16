@@ -363,7 +363,7 @@ SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE ...
 | `nickname` | 1~50자 | |
 | `category.name` | 1~30자, 필수 | 스키마 VARCHAR(30)과 일치 |
 | `category.color` | `#RRGGBB` 정규식 | 임의 문자열이 인라인 스타일로 들어가지 않게 |
-| `amount` | **필수, 0 초과, 최대 9,999,999,999,999.99** | `NUMERIC(15,2)` 범위 |
+| `amount` | **필수, 0 초과, 최대 20,000,000,000 (200억)** | 오타 방어선. DB 의 `NUMERIC(15,2)` 상한(9,999,999,999,999.99)은 자동 충족된다 |
 | `txnDate` | `yyyy-MM-dd`, 필수 | |
 | `merchant` | 최대 100자, 선택 | |
 | `memo` | 최대 500자, 선택 | |
