@@ -893,6 +893,12 @@ http
 
 ### 스타일 원칙
 - 그림자 대신 **1px border**(`#E5E5E5`)로 면 구분. 그림자는 모달/드롭다운에만.
+  > **예외는 대시보드 잔액 카드 하나다.** 이 화면에서 가장 중요한 숫자를 배경에서 띄우기 위해 그림자를 쓴다.
+  > 값은 `globals.css`의 **`--hero-shadow` 토큰 한 곳**에만 두고, 화면에서는 `shadow-hero` 유틸리티만 쓴다.
+  > ⚠️ **컴포넌트에 임의의 그림자(`shadow-lg`, `shadow-[...]`)를 직접 적지 않는다.** 예외가 흩어지는 순간
+  > 면 구분이 border 와 그림자 두 체계로 갈라지고, "왜 이 카드만 떠 있지"에 답할 곳이 없어진다.
+  > ⚠️ **다크 모드에서는 이 토큰이 `none` 이다.** 배경(`#0A0A0A`)이 거의 검정이라 검은 그림자는
+  > 보이지도 않으면서 카드 주변만 탁하게 만든다. 다크에서는 1px border 가 계속 면 구분을 맡는다.
 - 라운드: 카드 `rounded-xl`, 버튼/인풋 `rounded-lg`
 - 폰트: **Pretendard**. ⚠️ **Google Fonts에 없으므로 `next/font/google`로 불러올 수 없다.** 폰트 파일(`.woff2`)을 `src/app/fonts/`에 넣고 **`next/font/local`**로 로드한다. 가변 폰트(`PretendardVariable.woff2`) 하나면 충분하다.
 - 본문 15px / 항목 제목 16px semibold / 캡션 13px
