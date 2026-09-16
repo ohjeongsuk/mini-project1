@@ -229,15 +229,22 @@ DB 스키마명: **`miniproject1_db`** (소문자) · 테스트: **`miniproject1
 |---|---|---|
 | id | BIGSERIAL | PK |
 | email | VARCHAR(255) | UNIQUE, NOT NULL (로그인 ID) |
-| password | VARCHAR(255) | NOT NULL |
+| password | VARCHAR(255) | NULL (구글 계정은 비밀번호가 없다) |
 | nickname | VARCHAR(50) | NOT NULL |
+| provider | VARCHAR(20) | NOT NULL, DEFAULT `LOCAL` (`LOCAL`/`GOOGLE`) |
+| provider_id | VARCHAR(255) | NULL (구글 `sub`) |
 | created_at | TIMESTAMP | NOT NULL |
 | updated_at | TIMESTAMP | NOT NULL |
 | deleted_at | TIMESTAMP | NULL |
 
 > **`users.deleted_at`은 이번 범위에서 항상 NULL이다.** 회원 탈퇴가 비목표이므로 값을 채우는 경로가 없다. 다만 스키마와 조회 조건은 유지해, 향후 탈퇴 기능 추가 시 구조를 바꾸지 않는다. 로그인·인증 시 `deleted_at IS NULL` 검사는 걸어둔다.
 >
-> **`provider`·`provider_id` 컬럼을 지금 만들지 않는다.** 구글 로그인이 범위 밖이므로 항상 `LOCAL`/`NULL`인 컬럼이 된다. 나중에 OAuth를 추가할 때 컬럼 2개를 더하는 마이그레이션은 사소하다.
+> **`provider`·`provider_id` 컬럼을 둔다.** 구글 로그인(`AUTH-09`)을 범위에 넣으면서 추가했다.
+> `provider`는 `LOCAL`/`GOOGLE`이고 기본값은 `LOCAL`이다. `provider_id`는 구글의 `sub` 값으로 로컬 계정에서는 `NULL`이다.
+>
+> **`password`는 `NULL`을 허용한다.** 구글 계정에는 비밀번호가 없다. 랜덤 해시를 채워 넣으면 "비밀번호가 있는 계정"처럼 보여 로그인 경로가 헷갈린다. 비밀번호 로그인은 `provider = LOCAL`이고 `password IS NOT NULL`인 계정에만 허용한다.
+>
+> `ddl-auto: update`는 기존 행이 있는 테이블에 `NOT NULL` 컬럼을 붙이지 못하므로, 부분 유니크 인덱스와 같이 **`db/schema-extra.sql`에 DDL을 직접 적는다.**
 
 ### categories
 | 컬럼 | 타입 | 제약 |
@@ -803,6 +810,27 @@ http
 | INCOME | 기타수입 | `#737373` |
 
 - 사용자는 이후 자유롭게 수정·삭제·추가할 수 있다. **특별 취급하는 플래그를 두지 않는다** — `is_default` 컬럼을 만들면 "기본 카테고리는 삭제 못 함" 같은 규칙이 따라붙고, 그건 아무도 요청하지 않은 제약이다.
+
+### 구글 로그인 (AUTH-09)
+
+**백엔드 주도 리다이렉트**다. Spring Security OAuth2 Client 를 쓰고 NextAuth/Auth.js 는 쓰지 않는다.
+
+```
+프론트 "Google로 계속하기"
+  → GET  {API}/oauth2/authorization/google        (백엔드가 구글로 리다이렉트)
+  → 구글 동의 화면
+  → GET  {API}/login/oauth2/code/google           (구글이 백엔드로 되돌림)
+  → 백엔드가 우리 JWT 를 발급하고 프론트로 리다이렉트
+  → {WEB}/oauth/callback#token=...                (성공)
+  → {WEB}/oauth/callback#error=email_conflict     (실패)
+```
+
+- **토큰은 쿼리스트링이 아니라 URL 프래그먼트(`#`)로 넘긴다.** 프래그먼트는 서버로 전송되지 않아 액세스 로그·`Referer` 헤더에 JWT 가 남지 않는다. **프론트는 값을 읽는 즉시 `history.replaceState` 로 해시를 지운다.** 안 지우면 뒤로가기로 토큰이 다시 드러난다.
+- **같은 이메일의 로컬 계정이 이미 있으면 구글 로그인을 거부한다.** 자동 연동하지 않는다 — 구글 이메일 소유만으로 기존 비밀번호 계정을 차지하는 경로가 되기 때문이다. `error=email_conflict` 로 안내한다.
+- **구글로 처음 로그인하면 그 자리에서 회원가입 처리한다.** 일반 가입과 똑같이 **기본 카테고리 9개**를 같은 트랜잭션에서 만든다(AUTH-05).
+- **구글 계정은 비밀번호 로그인을 할 수 없다.** `POST /auth/login` 은 `provider = LOCAL` 이고 `password IS NOT NULL` 인 계정에만 응답한다. 그 외에는 일반 로그인 실패와 같은 401 문구를 쓴다(계정 존재 여부 노출 방지).
+- 리다이렉트 대상은 환경변수 `OAUTH2_REDIRECT_URI` 로 분리한다. 코드에 하드코딩하지 않는다.
+- **Google Cloud Console 의 승인된 리디렉션 URI 는 백엔드 주소다** — 로컬은 `http://localhost:8080/login/oauth2/code/google`. 프론트 주소를 넣으면 `redirect_uri_mismatch` 가 난다.
 
 ### 보안 규칙
 - 비밀번호: **BCrypt** 해싱, 6자 이상 + **UTF-8 72바이트 이하** (§4 ⚠️ 참조)
