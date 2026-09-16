@@ -14,6 +14,8 @@ minipj1-frontend/
 # IDE / 도구 산출물
 .metadata/
 shrimp_data/
+# Playwright MCP 가 남기는 스크린샷·콘솔 로그·페이지 스냅샷
+.playwright-mcp/
 
 # 루트에 임시로 떨어뜨린 참고용 이미지 (UI 레퍼런스 등)
 # 앞의 / 때문에 루트만 해당한다. docs/ 아래 이미지는 그대로 추적된다 —
