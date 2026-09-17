@@ -316,13 +316,28 @@ and t.type = :type                                        // 이렇게
 ## 6. 프론트엔드 설계
 
 ```
-src/app/(main)/chat/page.tsx          "use client"
-src/components/chat/ChatPanel.tsx     말풍선 목록 + 입력창
+src/app/(main)/chat/page.tsx          "use client" — 전체 화면
+src/components/chat/ChatWidget.tsx    떠 있는 창 (FAB + 껍데기)
+src/components/chat/ChatPanel.tsx     말풍선 목록 + 입력창 — 페이지와 위젯이 공유
 src/components/chat/ChatMessage.tsx   말풍선 하나
 src/hooks/useChat.ts                  useMutation
 ```
 
-- **새 페이지 `/chat`** 이다. 플로팅 패널은 모바일 하단 네비와 겹쳐 z-index·레이아웃 처리가 붙는데, 얻는 것이 없다.
+> **정정 (2026-09-17)** — 이 절의 초안은 "플로팅 패널은 얻는 것이 없다"며 페이지만 두기로 했다.
+> **그 판단이 틀렸다.** 대시보드를 보면서 물어보는 것이 이 기능의 실제 쓸모인데,
+> 페이지로만 두면 숫자를 확인하러 나갔다 와야 한다. 둘 다 둔다.
+
+- **떠 있는 창(`ChatWidget`)과 전체 화면 페이지(`/chat`)를 함께 둔다.**
+  대화 UI 는 `ChatPanel` 하나를 공유하고, 위젯은 껍데기(FAB·헤더·크기)만 맡는다.
+  두 벌로 만들면 답변 렌더링이 갈라진다.
+- **`/chat` 에서는 FAB 를 숨긴다.** 한 화면에 같은 입구가 둘일 이유가 없다.
+- 위젯 크기: 데스크톱 `380×560`, 모바일은 `inset-x-4 top-20 bottom-36`.
+  **모바일 FAB 는 `bottom-20` 이다** — 하단 탭 바가 64px 이라 `bottom-6` 이면 탭 위에 얹힌다.
+- 그림자는 **`shadow-md`** 를 쓴다. §8 이 "그림자는 모달·드롭다운에만" 을 허용하고
+  `popover`·`select` 가 이미 같은 값을 쓴다. `--hero-shadow` 는 잔액 카드 전용이며
+  다크에서 `none` 이라 떠 있는 창에는 맞지 않는다.
+- **FAB 에 배지를 달지 않는다.** 이 앱에 "안 읽음" 개념이 없어 항상 켜두면 거짓말이고, 끄면 장식만 남는다.
+- **FAB 색은 액센트(`#4F46E5`)다.** `#EF4444` 는 이 앱에서 「지출」 전용 색이라 버튼에 쓰면 금액 색 체계가 무너진다.
 - 대화 이력은 **localStorage 에 저장한다**(§6.1).
 - `useChat` 은 `useMutation` 이다. 질문마다 새 요청이고 캐시할 대상이 아니다.
   조회 전용이므로 **`invalidateQueries` 를 호출하지 않는다.**
