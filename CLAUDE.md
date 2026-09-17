@@ -644,7 +644,9 @@ deltaRatio  = (currentPace - baseline) / baseline
 }
 ```
 
-- `intent`는 `MONTHLY_SUMMARY` / `CATEGORY_AMOUNT` / `RECENT_TRANSACTIONS` / `BUDGET_STATUS` / `UNKNOWN`.
+- `intent`는 `MONTHLY_SUMMARY` / `CATEGORY_AMOUNT` / `RECENT_TRANSACTIONS` / `BUDGET_STATUS` /
+  `FORECAST` / `RECURRING` / `DAILY_AMOUNT` / `UNKNOWN`.
+- **`RECURRING`은 `yearMonth`가 `null`이다.** `asOf` 기준으로만 계산하므로 특정 달의 값처럼 보이면 안 된다.
 - `message`는 필수이고 1~200자다. `asOf`는 필수이며 `yyyy-MM-dd`다.
 - **`asOf`를 받는 이유는 §4와 같다.** 서버가 "이번 달"을 `now()`로 판정하면 매월 1일 0~9시에 사용자가 한 달 전 답을 받는다.
 - `transactions`는 `RECENT_TRANSACTIONS`일 때만 채우며 **기존 `TransactionResponse`를 그대로 쓴다.**
